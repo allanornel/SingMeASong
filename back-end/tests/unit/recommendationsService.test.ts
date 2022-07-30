@@ -1,6 +1,7 @@
 import { recommendationService, CreateRecommendationData } from "./../../src/services/recommendationsService.js";
 import { recommendationRepository } from "./../../src/repositories/recommendationRepository.js";
 import { jest } from "@jest/globals";
+import { notFoundError } from "../../src/utils/errorUtils.js";
 
 jest.mock("./../../src/services/recommendationsService");
 
@@ -42,11 +43,59 @@ describe("recommendationService test suite", () => {
     expect(recommendationRepository.updateScore).toBeCalled();
   });
 
-  it("With an invalid id, should call an error", async () => {
+  it("On try of upvote with an invalid id, should call an error", async () => {
     const id = 1;
     jest.spyOn(recommendationRepository, "find").mockImplementationOnce((): any => {});
 
     const promise = recommendationService.upvote(id);
-    expect(promise).rejects.toEqual({ message: "", type: "not_found" });
+    expect(promise).rejects.toEqual(notFoundError());
+  });
+
+  it("Should downvote a recommendation", async () => {
+    const id = 1;
+    const recommendation = {
+      id,
+      name: "nome qlqr",
+      youtubeLink: "youtube.com/asdasdas",
+      score: 1,
+    };
+    jest.spyOn(recommendationRepository, "find").mockImplementationOnce((): any => {
+      return recommendation;
+    });
+    jest.spyOn(recommendationRepository, "updateScore").mockImplementationOnce((): any => {
+      return { ...recommendation, score: recommendation.score - 1 };
+    });
+
+    await recommendationService.downvote(id);
+    expect(recommendationRepository.find).toBeCalled();
+    expect(recommendationRepository.updateScore).toBeCalled();
+  });
+
+  it("On downvote try with an invalid id, should call an error", async () => {
+    const id = 1;
+    jest.spyOn(recommendationRepository, "find").mockImplementationOnce((): any => {});
+    const promise = recommendationService.downvote(id);
+    expect(promise).rejects.toEqual(notFoundError());
+  });
+
+  it("On downvote with -5 score, should delete the recommendation", async () => {
+    const id = 1;
+    const recommendation = {
+      id,
+      name: "nome qlqr",
+      youtubeLink: "youtube.com/asdasdas",
+      score: -5,
+    };
+    jest.spyOn(recommendationRepository, "find").mockImplementationOnce((): any => {
+      return recommendation;
+    });
+    jest.spyOn(recommendationRepository, "updateScore").mockImplementationOnce((): any => {
+      return { ...recommendation, score: recommendation.score - 1 };
+    });
+    jest.spyOn(recommendationRepository, "remove").mockImplementationOnce((): any => {});
+    await recommendationService.downvote(id);
+    expect(recommendationRepository.find).toBeCalled();
+    expect(recommendationRepository.updateScore).toBeCalled();
+    expect(recommendationRepository.remove).toBeCalled();
   });
 });
